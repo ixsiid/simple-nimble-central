@@ -5,26 +5,12 @@
 
 #include <freertos/event_groups.h>
 
-enum class NimbleCallbackReason {
-	UNKNOWN = 0,
-	SUCCESS,
-	DONE,
-	CHARACTERISTIC_WRITE_FAILED,
-	CHARACTERISTIC_FIND_FAILED,
-	SERVICE_FIND_FAILED,
-	STOP_CANCEL_FAILED,
-	CONNECTION_FAILED,
-	OTHER_FAILED,
-	// 途中経過
-	CONNECTION_START,
-	CONNECTION_ESTABLISHED,
-	DISCONNECT,
-};
-
-typedef void (*SimpleNimbleCallback)(NimbleCallbackReason);
+#include "simple_nimble_callback_type.hpp"
 
 class SimpleNimbleCentral {
     private:
+	static const char *tag;
+
 	static const EventBits_t EVENT_DONE		    = 1 << 0;
 	static const EventBits_t EVENT_CONNECTION_FAILED = 1 << 1;
 	static const EventBits_t EVENT_FOUND		    = 1 << 2;

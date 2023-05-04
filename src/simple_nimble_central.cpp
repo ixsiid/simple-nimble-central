@@ -10,7 +10,7 @@
 
 #include "simple_nimble_central.hpp"
 
-const char *tag = "SimpleNimbleCentral";
+const char *SimpleNimbleCentral::tag = "SimpleNimbleCentral";
 
 EventGroupHandle_t SimpleNimbleCentral::event_group = xEventGroupCreate();
 SimpleNimbleCentral *SimpleNimbleCentral::instance  = nullptr;
