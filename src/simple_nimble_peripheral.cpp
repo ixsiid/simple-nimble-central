@@ -143,7 +143,7 @@ bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, ble_uuid
 };
 
 int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg) {
-	ESP_LOGI(tag, "GAP: %d", event->type);
+	ESP_LOGI(tag, "GAP event: %d", event->type);
 	struct ble_gap_conn_desc desc;
 	int rc;
 

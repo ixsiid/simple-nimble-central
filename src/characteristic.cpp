@@ -2,23 +2,32 @@
 
 const char *SimpleNimbleCharacteristicBuffer::tag = "CharacteristicBuffer";
 
-SimpleNimbleCharacteristicBuffer::SimpleNimbleCharacteristicBuffer(ble_uuid_any_t uuid, uint8_t size, Flag flag)
-    : uuid(uuid), length(size), buffer(new uint8_t[size]), flag(flag) {
+SimpleNimbleCharacteristicBuffer::SimpleNimbleCharacteristicBuffer(ble_uuid_any_t uuid, size_t size, Flag flag)
+    : uuid(uuid),
+	 data_length(0),
+	 buffer_size(size),
+	 buffer(new uint8_t[size]),
+	 flag(flag) {
 }
 
 const uint8_t *SimpleNimbleCharacteristicBuffer::read() { return buffer; }
 
 void SimpleNimbleCharacteristicBuffer::write(const uint8_t *data, uint8_t length) {
-	memcpy(buffer, data, length);
+	memcpy(buffer, data, buffer_size > length ? length : buffer_size);
+	this->data_length = length;
 }
 
 void SimpleNimbleCharacteristicBuffer::write_u8(uint8_t data) {
 	buffer[0] = data;
+
+	this->data_length = 1;
 }
 
 void SimpleNimbleCharacteristicBuffer::write_u16(uint16_t data) {
 	buffer[0] = (data >> 8) & 0xff;
 	buffer[1] = (data >> 0) & 0xff;
+
+	this->data_length = 2;
 }
 
 void SimpleNimbleCharacteristicBuffer::write_u32(uint32_t data) {
@@ -26,6 +35,8 @@ void SimpleNimbleCharacteristicBuffer::write_u32(uint32_t data) {
 	buffer[1] = (data >> 16) & 0xff;
 	buffer[2] = (data >> 8) & 0xff;
 	buffer[3] = (data >> 0) & 0xff;
+
+	this->data_length = 4;
 }
 
 void SimpleNimbleCharacteristicBuffer::notify() {}
@@ -46,6 +57,47 @@ void SimpleNimbleCharacteristicBuffer::create_def(struct ble_gatt_chr_def *ptr) 
 
 int SimpleNimbleCharacteristicBuffer::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 										    struct ble_gatt_access_ctxt *ctxt, void *arg) {
-	ESP_LOGI(tag, "%d, %d", conn_handle, attr_handle);
+	int rc;
+	SimpleNimbleCharacteristicBuffer *s = (SimpleNimbleCharacteristicBuffer *)arg;
+
+	switch (ctxt->op) {
+		case BLE_GATT_ACCESS_OP_READ_CHR:
+			ESP_LOGI(tag, "read");
+			if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+				MODLOG_DFLT(INFO, "Characteristic read; conn_handle=%d attr_handle=%d\n",
+						  conn_handle, attr_handle);
+			} else {
+				MODLOG_DFLT(INFO, "Characteristic read by NimBLE stack; attr_handle=%d\n",
+						  attr_handle);
+			}
+			if (attr_handle == s->val_handle) {
+				rc = os_mbuf_append(ctxt->om,
+								s->buffer,
+								s->data_length);
+				return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+			}
+			break;
+
+		case BLE_GATT_ACCESS_OP_WRITE_CHR:
+			ESP_LOGI(tag, "write");
+			if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+				MODLOG_DFLT(INFO, "Characteristic write; conn_handle=%d attr_handle=%d",
+						  conn_handle, attr_handle);
+			} else {
+				MODLOG_DFLT(INFO, "Characteristic write by NimBLE stack; attr_handle=%d",
+						  attr_handle);
+			}
+
+			if (attr_handle == s->val_handle) {
+				rc = ble_hs_mbuf_to_flat(ctxt->om, s->buffer, s->buffer_size, &s->data_length);
+				ble_gatts_chr_updated(attr_handle);
+				MODLOG_DFLT(INFO,
+						  "Notification/Indication scheduled for "
+						  "all subscribed peers.\n");
+				return rc;
+			}
+			break;
+	}
+
 	return BLE_ATT_ERR_UNLIKELY;
 }

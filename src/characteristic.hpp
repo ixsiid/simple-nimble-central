@@ -16,7 +16,8 @@ class SimpleNimbleCharacteristicBuffer {
 	static const char *tag;
 
 	ble_uuid_any_t uuid;
-	uint8_t length;
+	uint16_t data_length;
+	size_t buffer_size;
 	uint8_t *buffer;
 	Flag flag;
 	uint16_t val_handle;
@@ -25,7 +26,7 @@ class SimpleNimbleCharacteristicBuffer {
 						  struct ble_gatt_access_ctxt *ctxt, void *arg);
 
     public:
-	SimpleNimbleCharacteristicBuffer(ble_uuid_any_t uuid, uint8_t buffer_size, Flag flag);
+	SimpleNimbleCharacteristicBuffer(ble_uuid_any_t uuid, size_t buffer_size, Flag flag);
 	~SimpleNimbleCharacteristicBuffer();
 	const uint8_t *read();
 	void write(const uint8_t *data, uint8_t length);
