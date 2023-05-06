@@ -37,6 +37,7 @@ class Characteristic {
 	void write_u8(uint8_t data);
 	void write_u16(uint16_t data);
 	void write_u32(uint32_t data);
+	void clear(uint8_t size);
 	void notify();
 
 	void create_def(struct ble_gatt_chr_def *ptr);

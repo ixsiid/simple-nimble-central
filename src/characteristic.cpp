@@ -97,6 +97,11 @@ void Characteristic::write_u32(uint32_t data) {
 	this->data_length = 4;
 }
 
+void Characteristic::clear(uint8_t size) {
+	memset(buffer, 0, size);
+	data_length = size;
+}
+
 void Characteristic::notify() {
 	int conn_handle = 1;
 	ESP_LOGI(tag, "notify: %d, %d", conn_handle, val_handle);
@@ -179,7 +184,7 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 		case BLE_GATT_ACCESS_OP_WRITE_DSC:
 			ESP_LOGI(tag, "desc write");
 
-			rc = ble_hs_mbuf_to_flat(ctxt->om, d->buffer, d->buffer_size, &d->data_length);
+			rc = ble_hs_mbuf_to_flat(ctxt->om, d->buffer, descriptor_buffer_size, &d->data_length);
 			MODLOG_DFLT(INFO,
 					  "Notification/Indication scheduled for "
 					  "all subscribed peers.\n");
