@@ -104,7 +104,7 @@ void SimpleNimblePeripheral::initialize_services(uint8_t service_count) {
 	fields.num_uuids128 = 0;
 };
 
-bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, uint32_t uuid16or32, std::initializer_list<SimpleNimbleCharacteristicBuffer *> charas) {
+bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, uint32_t uuid16or32, std::initializer_list<Characteristic *> charas) {
 	ESP_LOGI(tag, "add service");
 
 	if (registered_service_count >= service_length) return false;

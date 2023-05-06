@@ -2,9 +2,11 @@
 
 #include <host/ble_gatt.h>
 
-const char *SimpleNimbleCharacteristicBuffer::tag = "CharacteristicBuffer";
+using namespace SimpleNimble;
 
-SimpleNimbleCharacteristicBuffer::SimpleNimbleCharacteristicBuffer(
+const char *Characteristic::tag = "CharacteristicBuffer";
+
+Characteristic::Characteristic(
     size_t size, Chr_AccessFlag flag,
     std::initializer_list<Descriptor *> descriptors)
     : data_length(0),
@@ -33,10 +35,10 @@ SimpleNimbleCharacteristicBuffer::SimpleNimbleCharacteristicBuffer(
 	}
 }
 
-SimpleNimbleCharacteristicBuffer::SimpleNimbleCharacteristicBuffer(
+Characteristic::Characteristic(
     uint32_t uuid16or32, size_t size, Chr_AccessFlag flag,
     std::initializer_list<Descriptor *> descriptors)
-    : SimpleNimbleCharacteristicBuffer(size, flag, descriptors) {
+    : Characteristic(size, flag, descriptors) {
 	if (uuid16or32 & 0xffff0000) {
 		// uuid32
 		uuid.u32 = {
@@ -52,41 +54,41 @@ SimpleNimbleCharacteristicBuffer::SimpleNimbleCharacteristicBuffer(
 	}
 }
 
-const uint8_t *SimpleNimbleCharacteristicBuffer::read() { return buffer; }
+const uint8_t *Characteristic::read() { return buffer; }
 
-void SimpleNimbleCharacteristicBuffer::write(const uint8_t *data, uint8_t length) {
+void Characteristic::write(const uint8_t *data, uint8_t length) {
 	size_t cpy_len = buffer_size > length ? length : buffer_size;
 	memcpy(buffer, data, cpy_len);
 	this->data_length = cpy_len;
 }
 
-void SimpleNimbleCharacteristicBuffer::write(const char *data) {
+void Characteristic::write(const char *data) {
 	size_t length	= strlen(data);
 	size_t cpy_len = buffer_size > length ? length : buffer_size;
 	memcpy(buffer, data, cpy_len + 1);
 	this->data_length = cpy_len;
 }
 
-void SimpleNimbleCharacteristicBuffer::write(std::initializer_list<uint8_t> data) {
+void Characteristic::write(std::initializer_list<uint8_t> data) {
 	int i = 0;
 	for (uint8_t d : data) buffer[i++] = d;
 	this->data_length = data.size();
 }
 
-void SimpleNimbleCharacteristicBuffer::write_u8(uint8_t data) {
+void Characteristic::write_u8(uint8_t data) {
 	buffer[0] = data;
 
 	this->data_length = 1;
 }
 
-void SimpleNimbleCharacteristicBuffer::write_u16(uint16_t data) {
+void Characteristic::write_u16(uint16_t data) {
 	buffer[0] = (data >> 8) & 0xff;
 	buffer[1] = (data >> 0) & 0xff;
 
 	this->data_length = 2;
 }
 
-void SimpleNimbleCharacteristicBuffer::write_u32(uint32_t data) {
+void Characteristic::write_u32(uint32_t data) {
 	buffer[0] = (data >> 24) & 0xff;
 	buffer[1] = (data >> 16) & 0xff;
 	buffer[2] = (data >> 8) & 0xff;
@@ -95,19 +97,19 @@ void SimpleNimbleCharacteristicBuffer::write_u32(uint32_t data) {
 	this->data_length = 4;
 }
 
-void SimpleNimbleCharacteristicBuffer::notify() {
+void Characteristic::notify() {
 	int conn_handle = 1;
 	ESP_LOGI(tag, "notify: %d, %d", conn_handle, val_handle);
 	ESP_LOG_BUFFER_HEXDUMP(tag, buffer, buffer_size, esp_log_level_t::ESP_LOG_INFO);
 	ble_gatts_chr_updated(val_handle);
 }
 
-SimpleNimbleCharacteristicBuffer::~SimpleNimbleCharacteristicBuffer() {
+Characteristic::~Characteristic() {
 	delete[] buffer;
 	delete[] descriptors;
 }
 
-void SimpleNimbleCharacteristicBuffer::create_def(struct ble_gatt_chr_def *ptr) {
+void Characteristic::create_def(struct ble_gatt_chr_def *ptr) {
 	ptr->uuid		   = &uuid.u;
 	ptr->access_cb	   = access_callback;
 	ptr->arg		   = this;
@@ -117,11 +119,11 @@ void SimpleNimbleCharacteristicBuffer::create_def(struct ble_gatt_chr_def *ptr) 
 	ptr->val_handle   = &val_handle;
 }
 
-int SimpleNimbleCharacteristicBuffer::access_callback(uint16_t conn_handle, uint16_t attr_handle,
-										    struct ble_gatt_access_ctxt *ctxt, void *arg) {
+int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
+							 struct ble_gatt_access_ctxt *ctxt, void *arg) {
 	int rc;
-	SimpleNimbleCharacteristicBuffer *s = (SimpleNimbleCharacteristicBuffer *)arg;
-	Descriptor *d					 = (Descriptor *)arg;
+	Characteristic *s = (Characteristic *)arg;
+	Descriptor *d	   = (Descriptor *)arg;
 
 	ESP_LOGI(tag, "cb: %d, %d, %d, %p", conn_handle, attr_handle, ctxt->op, arg);
 

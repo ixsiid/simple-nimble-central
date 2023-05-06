@@ -51,7 +51,7 @@ class SimpleNimblePeripheral {
 	void initialize_services(uint8_t service_count);
 	bool add_service(SimpleNimbleCallback callback,
 				  uint32_t uuid16or32,
-				  std::initializer_list<SimpleNimbleCharacteristicBuffer *> charas);
+				  std::initializer_list<Characteristic *> charas);
 
 	void start();
 

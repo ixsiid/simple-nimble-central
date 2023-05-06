@@ -40,4 +40,12 @@ constexpr Chr_AccessFlag operator|(Chr_AccessFlag l, Chr_AccessFlag r) {
 constexpr Dsc_AccessFlag operator|(Dsc_AccessFlag l, Dsc_AccessFlag r) {
 	return static_cast<Dsc_AccessFlag>(static_cast<int>(l) | static_cast<int>(r));
 }
+
+struct Descriptor {
+	ble_uuid_any_t uuid;
+	Dsc_AccessFlag flag;
+	uint8_t buffer[32];
+	size_t buffer_size = 32;
+	uint16_t data_length;
+};
 }  // namespace SimpleNimble

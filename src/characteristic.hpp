@@ -6,11 +6,9 @@
 #include <host/ble_hs.h>
 
 #include "simple_nimble_type.hpp"
-#include "descriptor.hpp"
 
-using namespace SimpleNimble;
-
-class SimpleNimbleCharacteristicBuffer {
+namespace SimpleNimble {
+class Characteristic {
     private:
 	static const char *tag;
 
@@ -25,13 +23,13 @@ class SimpleNimbleCharacteristicBuffer {
 	static int access_callback(uint16_t conn_handle, uint16_t attr_handle,
 						  struct ble_gatt_access_ctxt *ctxt, void *arg);
 
-	SimpleNimbleCharacteristicBuffer(size_t buffer_size, Chr_AccessFlag flag,
-							   std::initializer_list<Descriptor *> descriptors = {});
+	Characteristic(size_t buffer_size, Chr_AccessFlag flag,
+				std::initializer_list<Descriptor *> descriptors = {});
 
     public:
-	SimpleNimbleCharacteristicBuffer(uint32_t uuid16or32, size_t buffer_size, Chr_AccessFlag flag,
-							   std::initializer_list<Descriptor *> descriptors = {});
-	~SimpleNimbleCharacteristicBuffer();
+	Characteristic(uint32_t uuid16or32, size_t buffer_size, Chr_AccessFlag flag,
+				std::initializer_list<Descriptor *> descriptors = {});
+	~Characteristic();
 	const uint8_t *read();
 	void write(const uint8_t *data, uint8_t length);
 	void write(std::initializer_list<uint8_t> data);
@@ -43,3 +41,4 @@ class SimpleNimbleCharacteristicBuffer {
 
 	void create_def(struct ble_gatt_chr_def *ptr);
 };
+}  // namespace SimpleNimble
