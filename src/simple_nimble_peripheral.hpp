@@ -25,7 +25,7 @@ class SimpleNimblePeripheral {
 	static SimpleNimblePeripheral *instance;
 	static EventGroupHandle_t event_group;
 
-	static struct ble_gap_adv_params adv_params;
+	static ble_gap_adv_params adv_params;
 	static int ble_gap_event(struct ble_gap_event *event, void *arg);
 
 	SimpleNimblePeripheral();
@@ -35,9 +35,11 @@ class SimpleNimblePeripheral {
 	uint8_t service_length;
 	uint8_t registered_service_count;
 
-	struct ble_gatt_svc_def *services;
-	struct ble_hs_adv_fields fields;
-	ble_uuid_any_t * service_uuids;
+	ble_gatt_svc_def *services;
+	ble_hs_adv_fields fields;
+	ble_uuid_any_t *service_uuids;
+
+	void start_advertise();
 
 	static void print_services(SimpleNimblePeripheral *obj);
 
@@ -52,4 +54,6 @@ class SimpleNimblePeripheral {
 				  std::initializer_list<SimpleNimbleCharacteristicBuffer *> charas);
 
 	void start();
+
+	void debug();
 };

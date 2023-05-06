@@ -16,7 +16,7 @@ EventGroupHandle_t SimpleNimblePeripheral::event_group	  = xEventGroupCreate();
 SimpleNimblePeripheral *SimpleNimblePeripheral::instance = nullptr;
 
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-struct ble_gap_adv_params SimpleNimblePeripheral::adv_params = {
+ble_gap_adv_params SimpleNimblePeripheral::adv_params = {
     .conn_mode = BLE_GAP_CONN_MODE_UND,
     .disc_mode = BLE_GAP_DISC_MODE_GEN,
 };
@@ -127,7 +127,8 @@ bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, uint32_t
 
 	struct ble_gatt_svc_def *s = &services[registered_service_count];
 
-	s->type = registered_service_count == 0 ? BLE_GATT_SVC_TYPE_PRIMARY : BLE_GATT_SVC_TYPE_SECONDARY;
+	// s->type = registered_service_count == 0 ? BLE_GATT_SVC_TYPE_PRIMARY : BLE_GATT_SVC_TYPE_SECONDARY;
+	s->type = BLE_GATT_SVC_TYPE_PRIMARY;
 	s->uuid = &service_uuids[registered_service_count].u;
 
 	ESP_LOGI(tag, "%p, %hx", s, ((ble_uuid16_t *)s->uuid)->value);
@@ -181,15 +182,14 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 				rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
 			} else {
 				ESP_LOGI(tag, "BLE_GAP_EVENT_CONNECT: failed");
+				((SimpleNimblePeripheral *)arg)->start_advertise();
 			}
 
 			return 0;
 
 		case BLE_GAP_EVENT_DISCONNECT:
 			ESP_LOGI(tag, "ble gap disconnect");
-			// rc = ble_gap_adv_stop(); // 自動的にstopされるため不要
-			rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, nullptr, BLE_HS_FOREVER, &adv_params, ble_gap_event, nullptr);
-			ESP_LOGI(tag, "gap adv start: %d", rc);
+			((SimpleNimblePeripheral *)arg)->start_advertise();
 			return 0;
 	}
 
@@ -199,11 +199,6 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 void SimpleNimblePeripheral::start() {
 	ESP_LOGI(tag, "start");
 	int rc;
-
-	rc = ble_gatts_count_cfg(services);
-	ESP_LOGI(tag, "count cfg: %d", rc);
-	rc = ble_gatts_add_svcs(services);
-	ESP_LOGI(tag, "add_svcs: %d", rc);
 
 	ESP_LOGI(tag, "service count 16: %d, 32: %d, 128: %d", fields.num_uuids16, fields.num_uuids32, fields.num_uuids128);
 
@@ -256,17 +251,29 @@ void SimpleNimblePeripheral::start() {
 	}
 	fields.uuids128_is_complete = true;
 
+	ble_gatts_stop();
+
+	rc = ble_gatts_count_cfg(services);
+	ESP_LOGI(tag, "count cfg: %d", rc);
+	rc = ble_gatts_add_svcs(services);
+	ESP_LOGI(tag, "add_svcs: %d", rc);
+
 	rc = ble_gatts_start();
 	ESP_LOGI(tag, "gatts start: %d", rc);
 
 	rc = ble_gap_adv_set_fields(&fields);
 	ESP_LOGI(tag, "gap field: %d", rc);
 
-	rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, nullptr, BLE_HS_FOREVER, &adv_params, ble_gap_event, nullptr);
-	ESP_LOGI(tag, "gap adv start: %d", rc);
+	start_advertise();
+};
 
-	// for debug
-	print_services(this);
+void SimpleNimblePeripheral::start_advertise() {
+	int rc;
+
+	debug();
+
+	rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, nullptr, BLE_HS_FOREVER, &adv_params, ble_gap_event, this);
+	ESP_LOGI(tag, "gap adv start: %d", rc);
 };
 
 SimpleNimblePeripheral *SimpleNimblePeripheral::get_instance() {
@@ -293,3 +300,24 @@ void SimpleNimblePeripheral::print_services(SimpleNimblePeripheral *obj) {
 		}
 	}
 };
+
+void SimpleNimblePeripheral::debug() {
+	print_services(this);
+
+	ble_gatts_show_local();
+
+	int rc;
+	ble_uuid16_t a = {
+	    .u	 = {.type = BLE_UUID_TYPE_16},
+	    .value = 0x180a,
+	};
+	ble_uuid16_t f = {
+	    .u	 = {.type = BLE_UUID_TYPE_16},
+	    .value = 0x180f,
+	};
+	uint16_t handle;
+	rc = ble_gatts_find_svc(&a.u, &handle);
+	ESP_LOGI(tag, "%hx: (%d)", a.value, rc);
+	rc = ble_gatts_find_svc(&f.u, &handle);
+	ESP_LOGI(tag, "%hx: (%d)", f.value, rc);
+}

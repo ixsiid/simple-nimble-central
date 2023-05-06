@@ -30,8 +30,8 @@ enum class Chr_AccessFlag {  // for characteristic
 };
 
 enum class Dsc_AccessFlag {  // for descriptor
-	Desc_Read	 = BLE_ATT_F_READ,
-	Desc_Write = BLE_ATT_F_WRITE,
+	Read	 = BLE_ATT_F_READ,
+	Write = BLE_ATT_F_WRITE,
 };
 
 constexpr Chr_AccessFlag operator|(Chr_AccessFlag l, Chr_AccessFlag r) {
