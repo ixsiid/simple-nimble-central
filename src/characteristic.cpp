@@ -14,18 +14,16 @@ SimpleNimbleCharacteristicBuffer::SimpleNimbleCharacteristicBuffer(
 	if (descriptors.size() == 0) {
 		this->descriptors = nullptr;
 	} else {
+		ESP_LOGI(tag, "initialize descriptor");
 		ble_gatt_dsc_def *d = new ble_gatt_dsc_def[descriptors.size() + 1];
 		this->descriptors	= d;
 		for (auto desc : descriptors) {
 			d->access_cb	 = access_callback;
-			d->arg		 = d;
+			d->arg		 = desc;
 			d->att_flags	 = static_cast<int>(desc->flag);
 			d->min_key_size = 0;
 			d->uuid		 = &desc->uuid.u;
 			d++;
-
-			memcpy(desc->buffer, "hello, world!!?", 16);
-			desc->data_length = 15;
 		}
 		d->access_cb	 = nullptr;
 		d->arg		 = nullptr;
@@ -125,7 +123,7 @@ int SimpleNimbleCharacteristicBuffer::access_callback(uint16_t conn_handle, uint
 	SimpleNimbleCharacteristicBuffer *s = (SimpleNimbleCharacteristicBuffer *)arg;
 	Descriptor *d					 = (Descriptor *)arg;
 
-	ESP_LOGI(tag, "cb: %d, %d, %d", conn_handle, attr_handle, ctxt->op);
+	ESP_LOGI(tag, "cb: %d, %d, %d, %p", conn_handle, attr_handle, ctxt->op, arg);
 
 	switch (ctxt->op) {
 		case BLE_GATT_ACCESS_OP_READ_CHR:
@@ -171,8 +169,11 @@ int SimpleNimbleCharacteristicBuffer::access_callback(uint16_t conn_handle, uint
 			rc = os_mbuf_append(ctxt->om,
 							d->buffer,
 							d->data_length);
+			ESP_LOGI(tag, "desc result: %d %p %hx", rc, d, d->uuid.u16.value);
+			ESP_LOG_BUFFER_HEXDUMP(tag, d->buffer, d->data_length, esp_log_level_t::ESP_LOG_INFO);
 			return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
 			break;
+
 		case BLE_GATT_ACCESS_OP_WRITE_DSC:
 			ESP_LOGI(tag, "desc write");
 
