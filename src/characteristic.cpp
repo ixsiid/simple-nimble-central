@@ -171,7 +171,7 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 			rc = os_mbuf_append(ctxt->om,
 							d->buffer,
 							d->data_length);
-			ESP_LOGI(tag, "desc result: %d %p %hx", rc, d, d->uuid.u16.value);
+			ESP_LOGI(tag, "desc result: %d %p", rc, d);
 			ESP_LOG_BUFFER_HEXDUMP(tag, d->buffer, d->data_length, esp_log_level_t::ESP_LOG_INFO);
 			return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
 			break;
