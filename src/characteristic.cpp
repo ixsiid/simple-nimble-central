@@ -7,38 +7,12 @@ using namespace SimpleNimble;
 const char *Characteristic::tag = "CharacteristicBuffer";
 
 Characteristic::Characteristic(
-    size_t size, Chr_AccessFlag flag,
+    uint32_t uuid16or32, size_t size, Chr_AccessFlag flag,
     std::initializer_list<Descriptor *> descriptors)
     : data_length(0),
 	 buffer_size(size),
 	 buffer(new uint8_t[size]),
 	 flag(flag) {
-	if (descriptors.size() == 0) {
-		this->descriptors = nullptr;
-	} else {
-		ESP_LOGI(tag, "initialize descriptor");
-		ble_gatt_dsc_def *d = new ble_gatt_dsc_def[descriptors.size() + 1];
-		this->descriptors	= d;
-		for (auto desc : descriptors) {
-			d->access_cb	 = access_callback;
-			d->arg		 = desc;
-			d->att_flags	 = static_cast<int>(desc->flag);
-			d->min_key_size = 0;
-			d->uuid		 = &desc->uuid.u;
-			d++;
-		}
-		d->access_cb	 = nullptr;
-		d->arg		 = nullptr;
-		d->att_flags	 = 0;
-		d->min_key_size = 0;
-		d->uuid		 = nullptr;
-	}
-}
-
-Characteristic::Characteristic(
-    uint32_t uuid16or32, size_t size, Chr_AccessFlag flag,
-    std::initializer_list<Descriptor *> descriptors)
-    : Characteristic(size, flag, descriptors) {
 	if (uuid16or32 & 0xffff0000) {
 		// uuid32
 		uuid.u32 = {
@@ -51,6 +25,26 @@ Characteristic::Characteristic(
 		    .u	 = {.type = BLE_UUID_TYPE_16},
 		    .value = (uint16_t)uuid16or32,
 		};
+	}
+
+	if (descriptors.size() == 0) {
+		this->descriptors = nullptr;
+	} else {
+		ble_gatt_dsc_def *d = new ble_gatt_dsc_def[descriptors.size() + 1];
+		this->descriptors	= d;
+		for (auto desc : descriptors) {
+			d->access_cb	 = access_callback;
+			d->arg		 = desc;
+			d->att_flags	 = static_cast<int>(desc->flag);
+			d->min_key_size = 0;
+			d->uuid		 = desc->uuid;
+			d++;
+		}
+		d->access_cb	 = nullptr;
+		d->arg		 = nullptr;
+		d->att_flags	 = 0;
+		d->min_key_size = 0;
+		d->uuid		 = nullptr;
 	}
 }
 
@@ -115,6 +109,7 @@ Characteristic::~Characteristic() {
 }
 
 void Characteristic::create_def(struct ble_gatt_chr_def *ptr) {
+	ESP_LOGI(tag, "create_def descriptor: %p", descriptors);
 	ptr->uuid		   = &uuid.u;
 	ptr->access_cb	   = access_callback;
 	ptr->arg		   = this;

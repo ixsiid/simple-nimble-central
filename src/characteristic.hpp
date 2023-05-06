@@ -23,13 +23,11 @@ class Characteristic {
 	static int access_callback(uint16_t conn_handle, uint16_t attr_handle,
 						  struct ble_gatt_access_ctxt *ctxt, void *arg);
 
-	Characteristic(size_t buffer_size, Chr_AccessFlag flag,
-				std::initializer_list<Descriptor *> descriptors = {});
-
     public:
 	Characteristic(uint32_t uuid16or32, size_t buffer_size, Chr_AccessFlag flag,
 				std::initializer_list<Descriptor *> descriptors = {});
 	~Characteristic();
+
 	const uint8_t *read();
 	void write(const uint8_t *data, uint8_t length);
 	void write(std::initializer_list<uint8_t> data);
