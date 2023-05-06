@@ -104,56 +104,16 @@ void SimpleNimblePeripheral::initialize_services(uint8_t service_count) {
 	fields.num_uuids128 = 0;
 };
 
-bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, uint32_t uuid16or32, std::initializer_list<Characteristic *> charas) {
+bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, Service *service) {
 	ESP_LOGI(tag, "add service");
 
 	if (registered_service_count >= service_length) return false;
-	uint8_t uuid_type = uuid16or32 & 0xffff0000 ? BLE_UUID_TYPE_32 : BLE_UUID_TYPE_16;
 
-	switch (uuid_type) {
-		case BLE_UUID_TYPE_16:
-			service_uuids[registered_service_count].u16 = {
-			    .u	 = {.type = uuid_type},
-			    .value = (uint16_t)uuid16or32,
-			};
-			break;
-		case BLE_UUID_TYPE_32:
-			service_uuids[registered_service_count].u32 = {
-			    .u	 = {.type = uuid_type},
-			    .value = uuid16or32,
-			};
-			break;
-	}
+	service->create_def(&services[registered_service_count++]);
 
-	struct ble_gatt_svc_def *s = &services[registered_service_count];
+	services[registered_service_count].type = 0;
 
-	// s->type = registered_service_count == 0 ? BLE_GATT_SVC_TYPE_PRIMARY : BLE_GATT_SVC_TYPE_SECONDARY;
-	s->type = BLE_GATT_SVC_TYPE_PRIMARY;
-	s->uuid = &service_uuids[registered_service_count].u;
-
-	ESP_LOGI(tag, "%p, %hx", s, ((ble_uuid16_t *)s->uuid)->value);
-
-	struct ble_gatt_chr_def *chara = new struct ble_gatt_chr_def[charas.size() + 1];
-
-	s->characteristics = chara;
-	ESP_LOGI(tag, "%d, %p, %p", registered_service_count, s, chara);
-
-	for (auto c : charas) {
-		c->create_def(chara);
-		chara++;
-	}
-	chara->uuid = nullptr;
-
-	ESP_LOGI(tag, "created characteristics");
-
-	registered_service_count++;
-	s++;
-	s->uuid		    = nullptr;
-	s->type		    = 0;
-	s->includes	    = nullptr;
-	s->characteristics = nullptr;
-
-	switch (uuid_type) {
+	switch (service->type()) {
 		case BLE_UUID_TYPE_16:
 			fields.num_uuids16++;
 			break;
@@ -208,6 +168,7 @@ void SimpleNimblePeripheral::start() {
 	ESP_LOGI(tag, "start");
 	int rc;
 
+	print_services(this);
 	ESP_LOGI(tag, "service count 16: %d, 32: %d, 128: %d", fields.num_uuids16, fields.num_uuids32, fields.num_uuids128);
 
 	if (fields.num_uuids16 > 0) {
