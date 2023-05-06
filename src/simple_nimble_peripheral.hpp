@@ -39,6 +39,9 @@ class SimpleNimblePeripheral {
 	ble_hs_adv_fields fields;
 	ble_uuid_any_t *service_uuids;
 
+	bool connected;
+	uint16_t conn_handle;
+
 	void start_advertise();
 
 	static void print_services(SimpleNimblePeripheral *obj);
@@ -52,6 +55,8 @@ class SimpleNimblePeripheral {
 	bool add_service(SimpleNimbleCallback callback, Service *service);
 
 	void start();
+	bool is_connected();
+	uint16_t get_conn_handle();
 
 	void debug();
 };

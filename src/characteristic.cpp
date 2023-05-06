@@ -2,6 +2,8 @@
 
 #include <host/ble_gatt.h>
 
+#include "simple_nimble_peripheral.hpp"
+
 using namespace SimpleNimble;
 
 const char *Characteristic::tag = "CharacteristicBuffer";
@@ -97,9 +99,11 @@ void Characteristic::clear(uint8_t size) {
 }
 
 void Characteristic::notify() {
-	int conn_handle = 1;
+	SimpleNimblePeripheral * p = SimpleNimblePeripheral::get_instance();
+	if (!p->is_connected()) return;
+
+	int conn_handle = p->get_conn_handle();
 	ESP_LOGI(tag, "notify: %d, %d", conn_handle, val_handle);
-	ESP_LOG_BUFFER_HEXDUMP(tag, buffer, buffer_size, esp_log_level_t::ESP_LOG_INFO);
 	ble_gatts_chr_updated(val_handle);
 }
 
@@ -109,7 +113,6 @@ Characteristic::~Characteristic() {
 }
 
 void Characteristic::create_def(struct ble_gatt_chr_def *ptr) {
-	ESP_LOGI(tag, "create_def descriptor: %p", descriptors);
 	ptr->uuid		   = &uuid.u;
 	ptr->access_cb	   = access_callback;
 	ptr->arg		   = this;

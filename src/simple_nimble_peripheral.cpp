@@ -27,7 +27,9 @@ SimpleNimblePeripheral::SimpleNimblePeripheral()
 	 registered_service_count(0),
 	 services(nullptr),
 	 fields({}),
-	 service_uuids(nullptr) {
+	 service_uuids(nullptr),
+	 connected(false),
+	 conn_handle(0) {
 	ESP_LOGI(tag, "create instance");
 
 	fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
@@ -133,6 +135,8 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 	struct ble_gap_conn_desc desc;
 	int rc;
 
+	SimpleNimblePeripheral *p = (SimpleNimblePeripheral *)arg;
+
 	switch (event->type) {
 		// event->connectとevent->conn_updateは同一型
 		case BLE_GAP_EVENT_CONNECT:
@@ -142,22 +146,30 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 				ESP_LOGI(tag, "BLE_GAP_EVENT_CONNECT: success (%d)", event->connect.conn_handle);
 				rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
 				ESP_LOGI(tag, "connection found: %d, %d", rc, desc.conn_handle);
+				p->conn_handle = event->connect.conn_handle;
+				p->connected	= true;
 			} else {
 				ESP_LOGI(tag, "BLE_GAP_EVENT_CONNECT: failed");
-				((SimpleNimblePeripheral *)arg)->start_advertise();
+				p->connected = false;
+				p->start_advertise();
 			}
 
 			return 0;
 
 		case BLE_GAP_EVENT_DISCONNECT:
 			ESP_LOGI(tag, "ble gap disconnect");
-			((SimpleNimblePeripheral *)arg)->start_advertise();
+			p->connected = false;
+			p->start_advertise();
 			return 0;
 
 		case BLE_GAP_EVENT_SUBSCRIBE:
 			ESP_LOGI(tag, "ble gap subscribe, value handle: %d, reason: %d",
 				    event->subscribe.attr_handle,
 				    event->subscribe.reason);
+			return 0;
+			
+		case BLE_GAP_EVENT_MTU:
+			ESP_LOGI(tag, "mtu conn: %hx, channel: %x, value: %d", event->mtu.conn_handle, event->mtu.channel_id, event->mtu.value);
 			return 0;
 	}
 
@@ -168,7 +180,6 @@ void SimpleNimblePeripheral::start() {
 	ESP_LOGI(tag, "start");
 	int rc;
 
-	print_services(this);
 	ESP_LOGI(tag, "service count 16: %d, 32: %d, 128: %d", fields.num_uuids16, fields.num_uuids32, fields.num_uuids128);
 
 	if (fields.num_uuids16 > 0) {
@@ -242,7 +253,7 @@ void SimpleNimblePeripheral::start_advertise() {
 	rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, nullptr, BLE_HS_FOREVER, &adv_params, ble_gap_event, this);
 	ESP_LOGI(tag, "gap adv start: %d", rc);
 
-	debug();
+	// debug();
 };
 
 SimpleNimblePeripheral *SimpleNimblePeripheral::get_instance() {
@@ -270,23 +281,11 @@ void SimpleNimblePeripheral::print_services(SimpleNimblePeripheral *obj) {
 	}
 };
 
+bool SimpleNimblePeripheral::is_connected() { return connected; }
+uint16_t SimpleNimblePeripheral::get_conn_handle() { return conn_handle; }
+
 void SimpleNimblePeripheral::debug() {
 	print_services(this);
 
 	ble_gatts_show_local();
-
-	int rc;
-	ble_uuid16_t a = {
-	    .u	 = {.type = BLE_UUID_TYPE_16},
-	    .value = 0x180a,
-	};
-	ble_uuid16_t f = {
-	    .u	 = {.type = BLE_UUID_TYPE_16},
-	    .value = 0x180f,
-	};
-	uint16_t handle;
-	rc = ble_gatts_find_svc(&a.u, &handle);
-	ESP_LOGI(tag, "%hx: (%d)", a.value, rc);
-	rc = ble_gatts_find_svc(&f.u, &handle);
-	ESP_LOGI(tag, "%hx: (%d)", f.value, rc);
-}
+	}
