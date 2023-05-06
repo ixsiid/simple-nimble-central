@@ -24,7 +24,7 @@ class SimpleNimbleCharacteristicBuffer {
 
 	static int access_callback(uint16_t conn_handle, uint16_t attr_handle,
 						  struct ble_gatt_access_ctxt *ctxt, void *arg);
-						  
+
 	SimpleNimbleCharacteristicBuffer(size_t buffer_size, Chr_AccessFlag flag,
 							   std::initializer_list<Descriptor *> descriptors = {});
 
@@ -34,6 +34,7 @@ class SimpleNimbleCharacteristicBuffer {
 	~SimpleNimbleCharacteristicBuffer();
 	const uint8_t *read();
 	void write(const uint8_t *data, uint8_t length);
+	void write(std::initializer_list<uint8_t> data);
 	void write(const char *data);
 	void write_u8(uint8_t data);
 	void write_u16(uint16_t data);

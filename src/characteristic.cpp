@@ -1,5 +1,7 @@
 #include "characteristic.hpp"
 
+#include <host/ble_gatt.h>
+
 const char *SimpleNimbleCharacteristicBuffer::tag = "CharacteristicBuffer";
 
 SimpleNimbleCharacteristicBuffer::SimpleNimbleCharacteristicBuffer(
@@ -59,11 +61,18 @@ void SimpleNimbleCharacteristicBuffer::write(const uint8_t *data, uint8_t length
 	memcpy(buffer, data, cpy_len);
 	this->data_length = cpy_len;
 }
+
 void SimpleNimbleCharacteristicBuffer::write(const char *data) {
 	size_t length	= strlen(data);
 	size_t cpy_len = buffer_size > length ? length : buffer_size;
 	memcpy(buffer, data, cpy_len + 1);
 	this->data_length = cpy_len;
+}
+
+void SimpleNimbleCharacteristicBuffer::write(std::initializer_list<uint8_t> data) {
+	int i = 0;
+	for (uint8_t d : data) buffer[i++] = d;
+	this->data_length = data.size();
 }
 
 void SimpleNimbleCharacteristicBuffer::write_u8(uint8_t data) {
@@ -88,7 +97,12 @@ void SimpleNimbleCharacteristicBuffer::write_u32(uint32_t data) {
 	this->data_length = 4;
 }
 
-void SimpleNimbleCharacteristicBuffer::notify() {}
+void SimpleNimbleCharacteristicBuffer::notify() {
+	int conn_handle = 1;
+	ESP_LOGI(tag, "notify: %d, %d", conn_handle, val_handle);
+	ESP_LOG_BUFFER_HEXDUMP(tag, buffer, buffer_size, esp_log_level_t::ESP_LOG_INFO);
+	ble_gatts_chr_updated(val_handle);
+}
 
 SimpleNimbleCharacteristicBuffer::~SimpleNimbleCharacteristicBuffer() {
 	delete[] buffer;
@@ -127,6 +141,7 @@ int SimpleNimbleCharacteristicBuffer::access_callback(uint16_t conn_handle, uint
 				rc = os_mbuf_append(ctxt->om,
 								s->buffer,
 								s->data_length);
+				ESP_LOGI(tag, "read complete: %d (%d)", rc, s->data_length);
 				return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
 			}
 			break;

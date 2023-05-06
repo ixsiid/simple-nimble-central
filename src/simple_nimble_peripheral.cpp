@@ -174,12 +174,14 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 	int rc;
 
 	switch (event->type) {
+		// event->connectとevent->conn_updateは同一型
 		case BLE_GAP_EVENT_CONNECT:
 		case BLE_GAP_EVENT_CONN_UPDATE:
 			ESP_LOGI(tag, "ble gap connect or connection update");
 			if (event->connect.status == 0) {
-				ESP_LOGI(tag, "BLE_GAP_EVENT_CONNECT: success");
+				ESP_LOGI(tag, "BLE_GAP_EVENT_CONNECT: success (%d)", event->connect.conn_handle);
 				rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
+				ESP_LOGI(tag, "connection found: %d, %d", rc, desc.conn_handle);
 			} else {
 				ESP_LOGI(tag, "BLE_GAP_EVENT_CONNECT: failed");
 				((SimpleNimblePeripheral *)arg)->start_advertise();
@@ -190,6 +192,12 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 		case BLE_GAP_EVENT_DISCONNECT:
 			ESP_LOGI(tag, "ble gap disconnect");
 			((SimpleNimblePeripheral *)arg)->start_advertise();
+			return 0;
+
+		case BLE_GAP_EVENT_SUBSCRIBE:
+			ESP_LOGI(tag, "ble gap subscribe, value handle: %d, reason: %d",
+				    event->subscribe.attr_handle,
+				    event->subscribe.reason);
 			return 0;
 	}
 
@@ -270,10 +278,10 @@ void SimpleNimblePeripheral::start() {
 void SimpleNimblePeripheral::start_advertise() {
 	int rc;
 
-	debug();
-
 	rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, nullptr, BLE_HS_FOREVER, &adv_params, ble_gap_event, this);
 	ESP_LOGI(tag, "gap adv start: %d", rc);
+
+	debug();
 };
 
 SimpleNimblePeripheral *SimpleNimblePeripheral::get_instance() {
