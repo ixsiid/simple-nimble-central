@@ -26,7 +26,8 @@ SimpleNimblePeripheral::SimpleNimblePeripheral()
     : service_length(0),
 	 registered_service_count(0),
 	 services(nullptr),
-	 fields({}) {
+	 fields({}),
+	 service_uuids(nullptr) {
 	ESP_LOGI(tag, "create instance");
 
 	fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
@@ -44,11 +45,10 @@ SimpleNimblePeripheral::SimpleNimblePeripheral()
 		ESP_LOGI(tag, "nimble_port_freertos_deinit");
 		nimble_port_freertos_deinit();
 	});
-}
+};
 
-enum class DiscType : uintptr_t {
-	Service,
-	Characteristic,
+SimpleNimblePeripheral::~SimpleNimblePeripheral() {
+	initialize_services(0);
 };
 
 void SimpleNimblePeripheral::set_name(const char *name) {
@@ -67,7 +67,9 @@ void SimpleNimblePeripheral::initialize_services(uint8_t service_count) {
 			const struct ble_gatt_chr_def *c = s->characteristics;
 			if (c == nullptr) continue;
 			while (c->uuid) {
+				ESP_LOGI(tag, "delete descriptor: %p", c->descriptors);
 				if (c->descriptors) delete[] c->descriptors;
+				ESP_LOGI(tag, "It could stop here.");
 				c++;
 			}
 			delete[] s->characteristics;
@@ -91,6 +93,9 @@ void SimpleNimblePeripheral::initialize_services(uint8_t service_count) {
 	services[0].includes	   = nullptr;
 	services[0].characteristics = nullptr;
 
+	if (service_uuids) delete[] service_uuids;
+	service_uuids = new ble_uuid_any_t[service_count];
+
 	if (fields.uuids16) delete[] fields.uuids16;
 	if (fields.uuids32) delete[] fields.uuids32;
 	if (fields.uuids128) delete[] fields.uuids128;
@@ -99,19 +104,39 @@ void SimpleNimblePeripheral::initialize_services(uint8_t service_count) {
 	fields.num_uuids128 = 0;
 };
 
-bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, ble_uuid_any_t service_uuid, std::initializer_list<SimpleNimbleCharacteristicBuffer *> charas) {
+bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, uint32_t uuid16or32, std::initializer_list<SimpleNimbleCharacteristicBuffer *> charas) {
 	ESP_LOGI(tag, "add service");
 
 	if (registered_service_count >= service_length) return false;
+	uint8_t uuid_type = uuid16or32 & 0xffff0000 ? BLE_UUID_TYPE_32 : BLE_UUID_TYPE_16;
+
+	switch (uuid_type) {
+		case BLE_UUID_TYPE_16:
+			service_uuids[registered_service_count].u16 = {
+			    .u	 = {.type = uuid_type},
+			    .value = (uint16_t)uuid16or32,
+			};
+			break;
+		case BLE_UUID_TYPE_32:
+			service_uuids[registered_service_count].u32 = {
+			    .u	 = {.type = uuid_type},
+			    .value = uuid16or32,
+			};
+			break;
+	}
 
 	struct ble_gatt_svc_def *s = &services[registered_service_count];
 
 	s->type = registered_service_count == 0 ? BLE_GATT_SVC_TYPE_PRIMARY : BLE_GATT_SVC_TYPE_SECONDARY;
-	s->uuid = &service_uuid.u;
+	s->uuid = &service_uuids[registered_service_count].u;
 
-	s->characteristics = new struct ble_gatt_chr_def[charas.size() + 1];
+	ESP_LOGI(tag, "%p, %hx", s, ((ble_uuid16_t *)s->uuid)->value);
 
-	struct ble_gatt_chr_def *chara = (struct ble_gatt_chr_def *)s->characteristics;
+	struct ble_gatt_chr_def *chara = new struct ble_gatt_chr_def[charas.size() + 1];
+
+	s->characteristics = chara;
+	ESP_LOGI(tag, "%d, %p, %p", registered_service_count, s, chara);
+
 	for (auto c : charas) {
 		c->create_def(chara);
 		chara++;
@@ -127,7 +152,7 @@ bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, ble_uuid
 	s->includes	    = nullptr;
 	s->characteristics = nullptr;
 
-	switch (service_uuid.u.type) {
+	switch (uuid_type) {
 		case BLE_UUID_TYPE_16:
 			fields.num_uuids16++;
 			break;
@@ -180,14 +205,18 @@ void SimpleNimblePeripheral::start() {
 	rc = ble_gatts_add_svcs(services);
 	ESP_LOGI(tag, "add_svcs: %d", rc);
 
+	ESP_LOGI(tag, "service count 16: %d, 32: %d, 128: %d", fields.num_uuids16, fields.num_uuids32, fields.num_uuids128);
+
 	if (fields.num_uuids16 > 0) {
 		ble_uuid16_t *uuids = new ble_uuid16_t[fields.num_uuids16];
 		ble_gatt_svc_def *s = services;
 		for (int i = 0; i < fields.num_uuids16;) {
-			if (s->uuid == nullptr) break;
+			if (s->type == 0) break;
 			if (s->uuid->type == BLE_UUID_TYPE_16) {
+				ESP_LOGI(tag, "uuid [%p]: 0x%hx", s, ((ble_uuid16_t *)s->uuid)->value);
 				uuids[i++] = *((ble_uuid16_t *)(s->uuid));
 			}
+			s++;
 		}
 		fields.uuids16 = uuids;
 	} else {
@@ -199,10 +228,11 @@ void SimpleNimblePeripheral::start() {
 		ble_uuid32_t *uuids = new ble_uuid32_t[fields.num_uuids32];
 		ble_gatt_svc_def *s = services;
 		for (int i = 0; i < fields.num_uuids32;) {
-			if (s->uuid == nullptr) break;
+			if (s->type == 0) break;
 			if (s->uuid->type == BLE_UUID_TYPE_32) {
 				uuids[i++] = *((ble_uuid32_t *)(s->uuid));
 			}
+			s++;
 		}
 		fields.uuids32 = uuids;
 	} else {
@@ -214,10 +244,11 @@ void SimpleNimblePeripheral::start() {
 		ble_uuid128_t *uuids = new ble_uuid128_t[fields.num_uuids16];
 		ble_gatt_svc_def *s	 = services;
 		for (int i = 0; i < fields.num_uuids128;) {
-			if (s->uuid == nullptr) break;
+			if (s->type == 0) break;
 			if (s->uuid->type == BLE_UUID_TYPE_128) {
 				uuids[i++] = *((ble_uuid128_t *)(s->uuid));
 			}
+			s++;
 		}
 		fields.uuids128 = uuids;
 	} else {
@@ -233,9 +264,32 @@ void SimpleNimblePeripheral::start() {
 
 	rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, nullptr, BLE_HS_FOREVER, &adv_params, ble_gap_event, nullptr);
 	ESP_LOGI(tag, "gap adv start: %d", rc);
+
+	// for debug
+	print_services(this);
 };
 
 SimpleNimblePeripheral *SimpleNimblePeripheral::get_instance() {
 	if (instance == nullptr) instance = new SimpleNimblePeripheral();
 	return instance;
+};
+
+void SimpleNimblePeripheral::print_services(SimpleNimblePeripheral *obj) {
+	ESP_LOGI(tag, "print services");
+
+	ESP_LOGI(tag, "  %p, %p", obj, obj->services);
+
+	for (ble_gatt_svc_def *s = obj->services; s->type; s++) {
+		ESP_LOGI(tag, "  [%p] %d, %p, 0x%hx", s, s->type, s->uuid, ((ble_uuid16_t *)s->uuid)->value);
+		if (s->characteristics == nullptr) continue;
+		ESP_LOGI(tag, "  characteristic");
+		for (const ble_gatt_chr_def *c = s->characteristics; c->uuid; c++) {
+			ESP_LOGI(tag, "    [%p] %p 0x%hx", c, c->uuid, ((ble_uuid16_t *)c->uuid)->value);
+			if (c->descriptors == nullptr) continue;
+			ESP_LOGI(tag, "    desciptor");
+			for (const ble_gatt_dsc_def *d = c->descriptors; d->uuid; d++) {
+				ESP_LOGI(tag, "    [%p] %p 0x%hx", d, d->uuid, ((ble_uuid16_t *)d->uuid)->value);
+			}
+		}
+	}
 };

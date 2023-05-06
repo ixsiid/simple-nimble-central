@@ -5,7 +5,9 @@
 
 #include <freertos/event_groups.h>
 
-#include "simple_nimble_callback_type.hpp"
+#include "simple_nimble_type.hpp"
+
+using namespace SimpleNimble;
 
 class SimpleNimbleCentral {
     private:
