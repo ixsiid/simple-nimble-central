@@ -103,7 +103,7 @@ void Characteristic::notify() {
 	if (!p->is_connected()) return;
 
 	int conn_handle = p->get_conn_handle();
-	ESP_LOGI(tag, "notify: %d, %d", conn_handle, val_handle);
+	// ESP_LOGI(tag, "notify: %d, %d", conn_handle, val_handle);
 	ble_gatts_chr_updated(val_handle);
 }
 
@@ -125,7 +125,7 @@ void Characteristic::create_def(struct ble_gatt_chr_def *ptr) {
 int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 							 struct ble_gatt_access_ctxt *ctxt, void *arg) {
 	int rc;
-	Characteristic *s = (Characteristic *)arg;
+	Characteristic *c = (Characteristic *)arg;
 	Descriptor *d	   = (Descriptor *)arg;
 
 	ESP_LOGI(tag, "cb: %d, %d, %d, %p", conn_handle, attr_handle, ctxt->op, arg);
@@ -140,11 +140,11 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 				MODLOG_DFLT(INFO, "Characteristic read by NimBLE stack; attr_handle=%d\n",
 						  attr_handle);
 			}
-			if (attr_handle == s->val_handle) {
+			if (attr_handle == c->val_handle) {
 				rc = os_mbuf_append(ctxt->om,
-								s->buffer,
-								s->data_length);
-				ESP_LOGI(tag, "read complete: %d (%d)", rc, s->data_length);
+								c->buffer,
+								c->data_length);
+				ESP_LOGI(tag, "read complete: %d (%d)", rc, c->data_length);
 				return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
 			}
 			break;
@@ -159,8 +159,8 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 						  attr_handle);
 			}
 
-			if (attr_handle == s->val_handle) {
-				rc = ble_hs_mbuf_to_flat(ctxt->om, s->buffer, s->buffer_size, &s->data_length);
+			if (attr_handle == c->val_handle) {
+				rc = ble_hs_mbuf_to_flat(ctxt->om, c->buffer, c->buffer_size, &c->data_length);
 				ble_gatts_chr_updated(attr_handle);
 				MODLOG_DFLT(INFO,
 						  "Notification/Indication scheduled for "

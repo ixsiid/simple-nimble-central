@@ -63,6 +63,8 @@ void SimpleNimblePeripheral::set_name(const char *name) {
 
 void SimpleNimblePeripheral::initialize_services(uint8_t service_count) {
 	ESP_LOGI(tag, "initialize services");
+
+	// 既に定義済みの場合、メモリ消去
 	if (services) {
 		for (int i = 0; i < registered_service_count; i++) {
 			struct ble_gatt_svc_def *s	   = &services[i];
@@ -113,7 +115,10 @@ bool SimpleNimblePeripheral::add_service(SimpleNimbleCallback callback, Service 
 
 	service->create_def(&services[registered_service_count++]);
 
-	services[registered_service_count].type = 0;
+	services[registered_service_count].type			 = 0;
+	services[registered_service_count].characteristics = nullptr;
+	services[registered_service_count].includes		 = nullptr;
+	services[registered_service_count].uuid			 = nullptr;
 
 	switch (service->type()) {
 		case BLE_UUID_TYPE_16:
@@ -154,6 +159,21 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 				p->start_advertise();
 			}
 
+			// Windowsの再接続対策に、0x2902 Descriptorに {0x01, 0x00} をセットするといいらしい
+			// https://github.com/nkolban/esp32-snippets/issues/632
+			// NimBLEでは 0x2902は自動的に作られるためどうやってデータを書き込む？
+
+			return 0;
+
+		case BLE_GAP_EVENT_CONN_UPDATE_REQ:
+			ESP_LOGI(tag, "[PEER] Interval: %d - %d, ce len: %d - %d, timeout: %d, latency: %d",
+				    event->conn_update_req.peer_params->itvl_min, event->conn_update_req.peer_params->itvl_max,
+				    event->conn_update_req.peer_params->min_ce_len, event->conn_update_req.peer_params->max_ce_len,
+				    event->conn_update_req.peer_params->supervision_timeout, event->conn_update_req.peer_params->latency);
+			ESP_LOGI(tag, "[SELF] Interval: %d - %d, ce len: %d - %d, timeout: %d, latency: %d",
+				    event->conn_update_req.self_params->itvl_min, event->conn_update_req.self_params->itvl_max,
+				    event->conn_update_req.self_params->min_ce_len, event->conn_update_req.self_params->max_ce_len,
+				    event->conn_update_req.self_params->supervision_timeout, event->conn_update_req.self_params->latency);
 			return 0;
 
 		case BLE_GAP_EVENT_DISCONNECT:
@@ -167,7 +187,7 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 				    event->subscribe.attr_handle,
 				    event->subscribe.reason);
 			return 0;
-			
+
 		case BLE_GAP_EVENT_MTU:
 			ESP_LOGI(tag, "mtu conn: %hx, channel: %x, value: %d", event->mtu.conn_handle, event->mtu.channel_id, event->mtu.value);
 			return 0;
@@ -288,4 +308,4 @@ void SimpleNimblePeripheral::debug() {
 	print_services(this);
 
 	ble_gatts_show_local();
-	}
+}

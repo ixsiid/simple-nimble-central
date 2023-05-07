@@ -27,6 +27,7 @@ enum class Chr_AccessFlag {  // for characteristic
 	Write_no_response = BLE_GATT_CHR_F_WRITE_NO_RSP,
 	Write		   = BLE_GATT_CHR_F_WRITE,
 	Notify		   = BLE_GATT_CHR_F_NOTIFY,
+	Indicate		   = BLE_GATT_CHR_F_INDICATE,
 };
 
 enum class Dsc_AccessFlag {  // for descriptor
@@ -43,7 +44,7 @@ constexpr Dsc_AccessFlag operator|(Dsc_AccessFlag l, Dsc_AccessFlag r) {
 
 const uint8_t descriptor_buffer_size = 16;
 struct Descriptor {
-	const ble_uuid_t * uuid;
+	const ble_uuid_t* uuid;
 	Dsc_AccessFlag flag;
 	uint16_t data_length;
 	uint8_t buffer[descriptor_buffer_size];
