@@ -156,7 +156,7 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 			} else {
 				ESP_LOGI(tag, "BLE_GAP_EVENT_CONNECT: failed");
 				p->connected = false;
-				p->start_advertise();
+				xEventGroupSetBits(event_group, EVENT_RECONNECTION | EVENT_DONE);
 			}
 
 			// Windowsの再接続対策に、0x2902 Descriptorに {0x01, 0x00} をセットするといいらしい
@@ -179,7 +179,7 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 		case BLE_GAP_EVENT_DISCONNECT:
 			ESP_LOGI(tag, "ble gap disconnect");
 			p->connected = false;
-			p->start_advertise();
+			xEventGroupSetBits(event_group, EVENT_RECONNECTION | EVENT_DONE);
 			return 0;
 
 		case BLE_GAP_EVENT_SUBSCRIBE:
@@ -264,16 +264,20 @@ void SimpleNimblePeripheral::start() {
 	rc = ble_gap_adv_set_fields(&fields);
 	ESP_LOGI(tag, "gap field: %d", rc);
 
-	start_advertise();
-};
-
-void SimpleNimblePeripheral::start_advertise() {
-	int rc;
-
-	rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, nullptr, BLE_HS_FOREVER, &adv_params, ble_gap_event, this);
-	ESP_LOGI(tag, "gap adv start: %d", rc);
-
-	// debug();
+	xTaskCreatePinnedToCore([](void *){
+		int rc;
+		while(true) {
+			xEventGroupClearBits(event_group, 0xffffff);
+			
+			rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, nullptr, BLE_HS_FOREVER, &adv_params, ble_gap_event, get_instance());
+			ESP_LOGI(tag, "gap adv start: %d", rc);
+			
+			EventBits_t b = xEventGroupWaitBits(event_group, EVENT_DONE, true, false, portMAX_DELAY);
+			vTaskDelay(500 / portTICK_RATE_MS);
+			if (b & EVENT_RECONNECTION) continue;
+			if (b & EVENT_FINISH_ADVERTISE) break;
+		}
+	}, "AdvertiseWatcher", 4096, NULL, 1, nullptr, 0);
 };
 
 SimpleNimblePeripheral *SimpleNimblePeripheral::get_instance() {

@@ -22,6 +22,10 @@ class SimpleNimblePeripheral {
     private:
 	static const char *tag;
 
+	static const EventBits_t EVENT_DONE		   = 1 << 0;
+	static const EventBits_t EVENT_FINISH_ADVERTISE = 1 << 1;
+	static const EventBits_t EVENT_RECONNECTION	   = 1 << 2;
+
 	static SimpleNimblePeripheral *instance;
 	static EventGroupHandle_t event_group;
 
@@ -41,8 +45,6 @@ class SimpleNimblePeripheral {
 
 	bool connected;
 	uint16_t conn_handle;
-
-	void start_advertise();
 
 	static void print_services(SimpleNimblePeripheral *obj);
 
