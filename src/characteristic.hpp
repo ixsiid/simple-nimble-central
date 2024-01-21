@@ -1,6 +1,7 @@
 #pragma once
 
 #include <initializer_list>
+#include <functional>
 
 #include <host/ble_uuid.h>
 #include <host/ble_hs.h>
@@ -9,9 +10,6 @@
 
 namespace SimpleNimble {
 class Characteristic {
-    public:
-	typedef void (*CharacteristicAccessCallback)(Characteristic *, NimbleCallbackReason, void *);
-
     private:
 	static const char *tag;
 
@@ -23,7 +21,7 @@ class Characteristic {
 	uint16_t val_handle;
 	ble_gatt_dsc_def *descriptors;
 
-	CharacteristicAccessCallback callback;
+	std::function<void(NimbleCallbackReason)> callback;
 	void *callback_param;
 
 	static int access_callback(uint16_t conn_handle, uint16_t attr_handle,
@@ -44,7 +42,7 @@ class Characteristic {
 	void clear(uint8_t size);
 	void notify();
 
-	void set_callback(CharacteristicAccessCallback callback, void *callback_param);
+	void set_callback(std::function<void(NimbleCallbackReason)> callback);
 
 	void create_def(struct ble_gatt_chr_def *ptr);
 };

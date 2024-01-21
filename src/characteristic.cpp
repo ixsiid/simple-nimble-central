@@ -117,9 +117,8 @@ Characteristic::~Characteristic() {
 	delete[] descriptors;
 }
 
-void Characteristic::set_callback(CharacteristicAccessCallback callback, void *callback_param) {
+void Characteristic::set_callback(std::function<void(NimbleCallbackReason)> callback) {
 	this->callback		 = callback;
-	this->callback_param = callback_param;
 }
 
 void Characteristic::create_def(struct ble_gatt_chr_def *ptr) {
@@ -151,7 +150,7 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 						  attr_handle);
 			}
 
-			if (c->callback) c->callback(c, NimbleCallbackReason::CHARACTERISTIC_READ, c->callback_param);
+			if (c->callback) c->callback(NimbleCallbackReason::CHARACTERISTIC_READ);
 
 			if (attr_handle == c->val_handle) {
 				rc = os_mbuf_append(ctxt->om,
@@ -179,7 +178,7 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 						  "Notification/Indication scheduled for "
 						  "all subscribed peers.\n");
 
-				if (c->callback) c->callback(c, NimbleCallbackReason::CHARACTERISTIC_WRITE, c->callback_param);
+				if (c->callback) c->callback(NimbleCallbackReason::CHARACTERISTIC_WRITE);
 				return rc;
 			}
 			break;
