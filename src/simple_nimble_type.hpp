@@ -18,6 +18,8 @@ enum class NimbleCallbackReason {
 	CONNECTION_START,
 	CONNECTION_ESTABLISHED,
 	DISCONNECT,
+	CHARACTERISTIC_READ,
+	CHARACTERISTIC_WRITE,
 };
 
 typedef void (*SimpleNimbleCallback)(NimbleCallbackReason);

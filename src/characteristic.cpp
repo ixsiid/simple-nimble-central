@@ -14,7 +14,9 @@ Characteristic::Characteristic(
     : data_length(0),
 	 buffer_size(size),
 	 buffer(new uint8_t[size]),
-	 flag(flag) {
+	 flag(flag),
+	 callback(nullptr),
+	 callback_param(nullptr) {
 	if (uuid16or32 & 0xffff0000) {
 		// uuid32
 		uuid.u32 = {
@@ -115,6 +117,11 @@ Characteristic::~Characteristic() {
 	delete[] descriptors;
 }
 
+void Characteristic::set_callback(CharacteristicAccessCallback callback, void *callback_param) {
+	this->callback		 = callback;
+	this->callback_param = callback_param;
+}
+
 void Characteristic::create_def(struct ble_gatt_chr_def *ptr) {
 	ptr->uuid		   = &uuid.u;
 	ptr->access_cb	   = access_callback;
@@ -143,6 +150,9 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 				MODLOG_DFLT(INFO, "Characteristic read by NimBLE stack; attr_handle=%d\n",
 						  attr_handle);
 			}
+
+			if (c->callback) c->callback(c, NimbleCallbackReason::CHARACTERISTIC_READ, c->callback_param);
+
 			if (attr_handle == c->val_handle) {
 				rc = os_mbuf_append(ctxt->om,
 								c->buffer,
@@ -168,6 +178,8 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 				MODLOG_DFLT(INFO,
 						  "Notification/Indication scheduled for "
 						  "all subscribed peers.\n");
+
+				if (c->callback) c->callback(c, NimbleCallbackReason::CHARACTERISTIC_WRITE, c->callback_param);
 				return rc;
 			}
 			break;

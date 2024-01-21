@@ -9,6 +9,9 @@
 
 namespace SimpleNimble {
 class Characteristic {
+    public:
+	typedef void (*CharacteristicAccessCallback)(Characteristic *, NimbleCallbackReason, void *);
+
     private:
 	static const char *tag;
 
@@ -19,6 +22,9 @@ class Characteristic {
 	Chr_AccessFlag flag;
 	uint16_t val_handle;
 	ble_gatt_dsc_def *descriptors;
+
+	CharacteristicAccessCallback callback;
+	void *callback_param;
 
 	static int access_callback(uint16_t conn_handle, uint16_t attr_handle,
 						  struct ble_gatt_access_ctxt *ctxt, void *arg);
@@ -37,6 +43,8 @@ class Characteristic {
 	void write_u32(uint32_t data);
 	void clear(uint8_t size);
 	void notify();
+
+	void set_callback(CharacteristicAccessCallback callback, void *callback_param);
 
 	void create_def(struct ble_gatt_chr_def *ptr);
 };
