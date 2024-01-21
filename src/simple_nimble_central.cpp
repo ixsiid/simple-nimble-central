@@ -23,7 +23,7 @@ SimpleNimbleCentral::SimpleNimbleCentral()
 	 callback([](NimbleCallbackReason reason) {}) {
 	ESP_LOGI(tag, "create instance");
 
-	esp_nimble_hci_and_controller_init();
+	// esp_nimble_hci_and_controller_init();
 	nimble_port_init();
 	nimble_port_freertos_init([](void *param) {
 		ESP_LOGI(tag, "BLE Host Task Started");

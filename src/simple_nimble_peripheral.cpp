@@ -48,7 +48,7 @@ SimpleNimblePeripheral::SimpleNimblePeripheral()
 	fields.tx_pwr_lvl		    = BLE_HS_ADV_TX_PWR_LVL_AUTO;
 	fields.tx_pwr_lvl_is_present = true;
 
-	esp_nimble_hci_and_controller_init();
+	// esp_nimble_hci_and_controller_init();
 	nimble_port_init();
 
 	nimble_port_freertos_init([](void *param) {
@@ -284,7 +284,7 @@ void SimpleNimblePeripheral::start() {
 			ESP_LOGI(tag, "gap adv start: %d", rc);
 			
 			EventBits_t b = xEventGroupWaitBits(event_group, EVENT_DONE, true, false, portMAX_DELAY);
-			vTaskDelay(500 / portTICK_RATE_MS);
+			vTaskDelay(500 / portTICK_PERIOD_MS);
 			if (b & EVENT_RECONNECTION) continue;
 			if (b & EVENT_FINISH_ADVERTISE) break;
 		}
