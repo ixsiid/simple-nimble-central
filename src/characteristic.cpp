@@ -51,8 +51,7 @@ Characteristic::Characteristic(
 		d->uuid		 = nullptr;
 	}
 
-	uint8_t _zero[size] = {0};
-	write(_zero, size);
+	clear(size);
 }
 
 const uint8_t *Characteristic::read() { return buffer; }
