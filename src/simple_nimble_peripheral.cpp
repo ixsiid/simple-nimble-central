@@ -32,6 +32,17 @@ SimpleNimblePeripheral::SimpleNimblePeripheral()
 	 conn_handle(0) {
 	ESP_LOGI(tag, "create instance");
 
+	// ble_hs_cfg.sm_oob_data_flag = 0;
+	ble_hs_cfg.sm_bonding = 1; // Windowsの再ペアリング対策
+	// ble_hs_cfg.sm_mitm = 0;
+	// ble_hs_cfg.sm_sc = 0;
+	// ble_hs_cfg.sm_keypress = 0; // mynewt-nimble is nsupported yet
+
+	// ble_hs_cfg.sm_our_key_dist = 0;
+	// ble_hs_cfg.sm_their_key_dist = 0;
+
+
+
 	fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
 
 	fields.tx_pwr_lvl		    = BLE_HS_ADV_TX_PWR_LVL_AUTO;
@@ -177,7 +188,7 @@ int SimpleNimblePeripheral::ble_gap_event(struct ble_gap_event *event, void *arg
 			return 0;
 
 		case BLE_GAP_EVENT_DISCONNECT:
-			ESP_LOGI(tag, "ble gap disconnect");
+			ESP_LOGI(tag, "ble gap disconnect: %d", event->disconnect.reason);
 			p->connected = false;
 			xEventGroupSetBits(event_group, EVENT_RECONNECTION | EVENT_DONE);
 			return 0;
