@@ -48,6 +48,9 @@ Characteristic::Characteristic(
 		d->min_key_size = 0;
 		d->uuid		 = nullptr;
 	}
+
+	uint8_t _zero[size] = {0};
+	write(_zero, size);
 }
 
 const uint8_t *Characteristic::read() { return buffer; }
@@ -99,7 +102,7 @@ void Characteristic::clear(uint8_t size) {
 }
 
 void Characteristic::notify() {
-	SimpleNimblePeripheral * p = SimpleNimblePeripheral::get_instance();
+	SimpleNimblePeripheral *p = SimpleNimblePeripheral::get_instance();
 	if (!p->is_connected()) return;
 
 	int conn_handle = p->get_conn_handle();
