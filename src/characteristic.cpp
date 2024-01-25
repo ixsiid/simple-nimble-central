@@ -107,7 +107,7 @@ void Characteristic::notify() {
 	if (!p->is_connected()) return;
 
 	int conn_handle = p->get_conn_handle();
-	// ESP_LOGI(tag, "notify: %d, %d", conn_handle, val_handle);
+	// ESP_LOGD(tag, "notify: %d, %d", conn_handle, val_handle);
 	ble_gatts_chr_updated(val_handle);
 }
 
@@ -136,17 +136,15 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 	Characteristic *c = (Characteristic *)arg;
 	Descriptor *d	   = (Descriptor *)arg;
 
-	ESP_LOGI(tag, "cb: %d, %d, %d, %p", conn_handle, attr_handle, ctxt->op, arg);
+	ESP_LOGD(tag, "cb: %d, %d, %d, %p", conn_handle, attr_handle, ctxt->op, arg);
 
 	switch (ctxt->op) {
 		case BLE_GATT_ACCESS_OP_READ_CHR:
-			ESP_LOGI(tag, "read");
+			ESP_LOGD(tag, "read");
 			if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
-				MODLOG_DFLT(INFO, "Characteristic read; conn_handle=%d attr_handle=%d\n",
-						  conn_handle, attr_handle);
+				MODLOG_DFLT(DEBUG, "Characteristic read; conn_handle=%d attr_handle=%d\n", conn_handle, attr_handle);
 			} else {
-				MODLOG_DFLT(INFO, "Characteristic read by NimBLE stack; attr_handle=%d\n",
-						  attr_handle);
+				MODLOG_DFLT(DEBUG, "Characteristic read by NimBLE stack; attr_handle=%d\n", attr_handle);
 			}
 
 			if (c->callback) c->callback(NimbleCallbackReason::CHARACTERISTIC_READ);
@@ -155,25 +153,23 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 				rc = os_mbuf_append(ctxt->om,
 								c->buffer,
 								c->data_length);
-				ESP_LOGI(tag, "read complete: %d (%d)", rc, c->data_length);
+				ESP_LOGD(tag, "read complete: %d (%d)", rc, c->data_length);
 				return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
 			}
 			break;
 
 		case BLE_GATT_ACCESS_OP_WRITE_CHR:
-			ESP_LOGI(tag, "write");
+			ESP_LOGD(tag, "write");
 			if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
-				MODLOG_DFLT(INFO, "Characteristic write; conn_handle=%d attr_handle=%d",
-						  conn_handle, attr_handle);
+				MODLOG_DFLT(DEBUG, "Characteristic write; conn_handle=%d attr_handle=%d", conn_handle, attr_handle);
 			} else {
-				MODLOG_DFLT(INFO, "Characteristic write by NimBLE stack; attr_handle=%d",
-						  attr_handle);
+				MODLOG_DFLT(DEBUG, "Characteristic write by NimBLE stack; attr_handle=%d", attr_handle);
 			}
 
 			if (attr_handle == c->val_handle) {
 				rc = ble_hs_mbuf_to_flat(ctxt->om, c->buffer, c->buffer_size, &c->data_length);
 				ble_gatts_chr_updated(attr_handle);
-				MODLOG_DFLT(INFO,
+				MODLOG_DFLT(DEBUG,
 						  "Notification/Indication scheduled for "
 						  "all subscribed peers.\n");
 
@@ -183,20 +179,20 @@ int Characteristic::access_callback(uint16_t conn_handle, uint16_t attr_handle,
 			break;
 
 		case BLE_GATT_ACCESS_OP_READ_DSC:
-			ESP_LOGI(tag, "desc read");
+			ESP_LOGD(tag, "desc read");
 			rc = os_mbuf_append(ctxt->om,
 							d->buffer,
 							d->data_length);
-			ESP_LOGI(tag, "desc result: %d %p", rc, d);
+			ESP_LOGD(tag, "desc result: %d %p", rc, d);
 			ESP_LOG_BUFFER_HEXDUMP(tag, d->buffer, d->data_length, esp_log_level_t::ESP_LOG_INFO);
 			return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
 			break;
 
 		case BLE_GATT_ACCESS_OP_WRITE_DSC:
-			ESP_LOGI(tag, "desc write");
+			ESP_LOGD(tag, "desc write");
 
 			rc = ble_hs_mbuf_to_flat(ctxt->om, d->buffer, descriptor_buffer_size, &d->data_length);
-			MODLOG_DFLT(INFO,
+			MODLOG_DFLT(DEBUG,
 					  "Notification/Indication scheduled for "
 					  "all subscribed peers.\n");
 			return rc;
